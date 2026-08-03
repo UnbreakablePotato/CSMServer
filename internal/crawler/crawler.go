@@ -38,8 +38,8 @@ var challengers Leaderboard
 
 type Queue struct {
 	VisitedMatches map[string]bool
-	PendingMatches []string
-	PendingPuuids  []string
+	PendingMatches chan string
+	PendingPuuids  chan string
 	mu             *sync.Mutex
 }
 
@@ -72,21 +72,20 @@ func InitialRequest() error {
 		return err
 	}
 
-	queue.mu.Lock()
+	//queue.mu.Lock()
 	for i := range challengers.Entries {
-		queue.PendingPuuids = append(queue.PendingPuuids, challengers.Entries[i].Puuid)
+		queue.PendingPuuids <- challengers.Entries[i].Puuid
 	}
-	queue.mu.Unlock()
+	//queue.mu.Unlock()
 
 	return nil
 }
 
 func ExtractMatchIds(q *Queue) ([]string, error) {
 
-	fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/" + q.PendingPuuids[0] + "/ids?start=0&count=5?api_key=" + apiKey
+	puuid := <-queue.PendingPuuids
 
-	//remove used puuid from pending
-	q.PendingPuuids = append(q.PendingPuuids[:0], q.PendingPuuids[1:]...)
+	fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids?start=0&count=5?api_key=" + apiKey
 
 	req, err := http.NewRequest("GET", fullUrl, nil)
 	if err != nil {
@@ -117,6 +116,8 @@ func ExtractMatchIds(q *Queue) ([]string, error) {
 		result[i] = strings.ReplaceAll(result[i], "[", "")
 		result[i] = strings.ReplaceAll(result[i], "]", "")
 		//fmt.Printf("debug: %s\n", result[i])
+
+		q.PendingMatches <- result[i]
 	}
 
 	return result, nil
@@ -154,7 +155,8 @@ func ExtractMatchData(matches []string) error {
 		}
 	}
 
-	queue.PendingMatches = append(queue.PendingMatches, intermediateGame.Metadata.MatchID)
+	//queue.PendingMatches = append(queue.PendingMatches, intermediateGame.Metadata.MatchID)
+	queue.PendingMatches <- intermediateGame.Metadata.MatchID
 
 	return nil
 }
