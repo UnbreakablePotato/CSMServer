@@ -41,6 +41,7 @@ type Queue struct {
 	VisitedMatches map[string]bool
 	PendingMatches chan string
 	PendingPuuids  chan string
+	MatchData      chan api.Game
 	mu             *sync.RWMutex
 }
 
@@ -139,19 +140,20 @@ func ExtractMatchIds(q *Queue) {
 			q.mu.Lock()
 			if !q.VisitedMatches[result[i]] {
 				q.PendingMatches <- result[i]
-			} else {
 				q.VisitedMatches[result[i]] = true
+			} else {
+				//huh
+				//q.VisitedMatches[result[i]] = true
 			}
 			q.mu.Unlock()
 		}
 	}
 }
 
-var intermediateGame api.Game
-
 func ExtractMatchData() {
 
 	for {
+		var intermediateGame api.Game
 		matchID := <-queue.PendingMatches
 		fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/" + matchID + "?api_key=" + apiKey
 		req, err := http.NewRequest("GET", fullUrl, nil)
@@ -191,13 +193,140 @@ func ExtractMatchData() {
 			//return err
 		}
 
-		queue.PendingMatches <- intermediateGame.Metadata.MatchID
+		//queue.PendingMatches <- intermediateGame.Metadata.MatchID
+
+		queue.MatchData <- intermediateGame
 	}
 
 	//queue.PendingMatches = append(queue.PendingMatches, intermediateGame.Metadata.MatchID)
 }
 
 func AddGameToDB(db *sql.DB) {
+	for {
+		match := <-queue.MatchData
+
+		query := `INSERT INTO games (match_id, data_version, end_of_game_result, game_creation,
+			game_duration, game_end_timestamp, game_id, game_mode, game_name, game_start_timestamp,
+			game_type, game_version, map_id, platform_id, queue_id, tournament_code)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
+		_, err := db.Exec(query, match.Metadata.MatchID, match.Metadata.DataVersion, match.Info.EndOfGameResult,
+			match.Info.GameCreation, match.Info.GameDuration, match.Info.GameEndTimestamp, match.Info.GameID, match.Info.GameMode,
+			match.Info.GameName, match.Info.GameStartTimestamp, match.Info.GameType, match.Info.GameVersion, match.Info.MapID,
+			match.Info.PlatformID, match.Info.QueueID, match.Info.TournamentCode)
+		if err != nil {
+			fmt.Printf("Error adding game: %s", err)
+		}
+
+		query = `INSERT INTO participants (
+			match_id,
+	 		participant_id,
+	  		puuid, summoner_id,
+	   		summoner_name,
+			summoner_level,
+			riot_id_game_name,
+			riot_id_tagline,
+			profile_icon,
+			champion_id,
+			champion_name,
+			champion_level,
+			champion_experience,
+			team_id, team_position,
+			individual_position,
+			lane,
+			role,
+			kills,
+			deaths,
+			assists,
+			win,
+			gold_earned,
+			gold_spent,
+			total_minions_killed,
+			neutral_minions_killed,
+			total_damage_dealt,
+			total_damage_dealt_to_champions,
+			total_damage_taken,
+			damage_self_mitigated,
+			total_heal,
+			vision_score,
+			wards_placed,
+			ward_killed,
+			item_0,
+			item_1,
+			item_2,
+			item_3,
+			item_4,
+			item_5,
+			item_6,
+			summoner_spell_1_id,
+			summoner_spell_2_id,
+			first_blood_kill,
+			first_blood_assist,
+			first_tower_kill,
+			first_tower_assist,
+			double_kills,
+			triple_kills,
+			quadra_kills,
+			penta_kills)
+			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+			?, ?, ?, ?, ?, ?);`
+		for i := range match.Info.Participants {
+			_, err = db.Exec(query,
+				match.Metadata.MatchID,
+				match.Info.Participants[i].ParticipantID,
+				match.Info.Participants[i].Puuid,
+				match.Info.Participants[i].SummonerID,
+				match.Info.Participants[i].SummonerName,
+				match.Info.Participants[i].SummonerLevel,
+				match.Info.Participants[i].RiotIDGameName,
+				match.Info.Participants[i].RiotIDTagline,
+				match.Info.Participants[i].ProfileIcon,
+				match.Info.Participants[i].ChampionID,
+				match.Info.Participants[i].ChampionName,
+				match.Info.Participants[i].ChampLevel,
+				match.Info.Participants[i].ChampExperience,
+				match.Info.Participants[i].TeamID,
+				match.Info.Participants[i].TeamPosition,
+				match.Info.Participants[i].IndividualPosition,
+				match.Info.Participants[i].Lane,
+				match.Info.Participants[i].Role,
+				match.Info.Participants[i].Kills,
+				match.Info.Participants[i].Deaths,
+				match.Info.Participants[i].Assists,
+				match.Info.Participants[i].Win,
+				match.Info.Participants[i].GoldEarned,
+				match.Info.Participants[i].GoldSpent,
+				match.Info.Participants[i].TotalMinionsKilled,
+				match.Info.Participants[i].NeutralMinionsKilled,
+				match.Info.Participants[i].TotalDamageDealt,
+				match.Info.Participants[i].TotalDamageDealtToChampions,
+				match.Info.Participants[i].DamageSelfMitigated,
+				match.Info.Participants[i].TotalHeal,
+				match.Info.Participants[i].VisionScore,
+				match.Info.Participants[i].WardsPlaced,
+				match.Info.Participants[i].WardsKilled,
+				match.Info.Participants[i].Item0,
+				match.Info.Participants[i].Item1,
+				match.Info.Participants[i].Item2,
+				match.Info.Participants[i].Item3,
+				match.Info.Participants[i].Item4,
+				match.Info.Participants[i].Item5,
+				match.Info.Participants[i].Item6,
+				match.Info.Participants[i].Summoner1ID,
+				match.Info.Participants[i].Summoner2ID,
+				match.Info.Participants[i].FirstBloodKill,
+				match.Info.Participants[i].FirstBloodAssist,
+				match.Info.Participants[i].FirstTowerKill,
+				match.Info.Participants[i].FirstTowerAssist,
+				match.Info.Participants[i].DoubleKills,
+				match.Info.Participants[i].TripleKills,
+				match.Info.Participants[i].QuadraKills,
+				match.Info.Participants[i].PentaKills)
+			if err != nil {
+				fmt.Printf("Error adding participants: %s", err)
+			}
+		}
+	}
 
 }
 
