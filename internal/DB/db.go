@@ -4,7 +4,7 @@ import "database/sql"
 
 func CreateChampionTable(db *sql.DB) (sql.Result, error) {
 
-	sql := `CREATE TABLE IF NOT EXISTS champion (
+	query := `CREATE TABLE IF NOT EXISTS champion (
 		ChampionId INTEGER NOT NULL,
 		ChampionIcon TEXT,
 		RecommendedPerk1 INTEGER NOT NULL,
@@ -28,13 +28,12 @@ func CreateChampionTable(db *sql.DB) (sql.Result, error) {
 		RecommendedItem7 INTEGER,
 	);`
 
-	return db.Exec(sql)
+	return db.Exec(query)
 }
 
 func CreateGameTable(db *sql.DB) (sql.Result, error) {
 
-	sql := `CREATE TABLE IF NOT EXISTS game(
-		CREATE TABLE IF NOT EXISTS games (
+	query := `CREATE TABLE IF NOT EXISTS games (
     match_id              TEXT PRIMARY KEY,
     data_version          TEXT NOT NULL,
 
@@ -54,12 +53,12 @@ func CreateGameTable(db *sql.DB) (sql.Result, error) {
     tournament_code       TEXT
 	);`
 
-	return db.Exec(sql)
+	return db.Exec(query)
 }
 
 func CreateParticipantsTable(db *sql.DB) (sql.Result, error) {
 
-	sql := `CREATE TABLE IF NOT EXISTS participants (
+	query := `CREATE TABLE IF NOT EXISTS participants (
     match_id                         TEXT NOT NULL,
     participant_id                   INTEGER NOT NULL,
     puuid                            TEXT NOT NULL,
@@ -138,7 +137,7 @@ CREATE INDEX IF NOT EXISTS idx_participants_champion
 CREATE INDEX IF NOT EXISTS idx_participants_match_team
     ON participants(match_id, team_id);`
 
-	return db.Exec(sql)
+	return db.Exec(query)
 }
 
 /*
