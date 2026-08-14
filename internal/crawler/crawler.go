@@ -205,14 +205,40 @@ func AddGameToDB(db *sql.DB) {
 	for {
 		match := <-queue.MatchData
 
-		query := `INSERT INTO games (match_id, data_version, end_of_game_result, game_creation,
-			game_duration, game_end_timestamp, game_id, game_mode, game_name, game_start_timestamp,
-			game_type, game_version, map_id, platform_id, queue_id, tournament_code)
+		query := `INSERT INTO games (match_id,
+		 	data_version,
+		  	end_of_game_result,
+		    game_creation,
+
+			game_duration,
+			game_end_timestamp,
+			game_id, game_mode,
+			game_name,
+			game_start_timestamp,
+			game_type,
+			game_version,
+			map_id,
+			platform_id,
+			queue_id,
+			tournament_code)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
-		_, err := db.Exec(query, match.Metadata.MatchID, match.Metadata.DataVersion, match.Info.EndOfGameResult,
-			match.Info.GameCreation, match.Info.GameDuration, match.Info.GameEndTimestamp, match.Info.GameID, match.Info.GameMode,
-			match.Info.GameName, match.Info.GameStartTimestamp, match.Info.GameType, match.Info.GameVersion, match.Info.MapID,
-			match.Info.PlatformID, match.Info.QueueID, match.Info.TournamentCode)
+		_, err := db.Exec(query,
+			match.Metadata.MatchID,
+			match.Metadata.DataVersion,
+			match.Info.EndOfGameResult,
+			match.Info.GameCreation,
+			match.Info.GameDuration,
+			match.Info.GameEndTimestamp,
+			match.Info.GameID,
+			match.Info.GameMode,
+			match.Info.GameName,
+			match.Info.GameStartTimestamp,
+			match.Info.GameType,
+			match.Info.GameVersion,
+			match.Info.MapID,
+			match.Info.PlatformID,
+			match.Info.QueueID,
+			match.Info.TournamentCode)
 		if err != nil {
 			fmt.Printf("Error adding game: %s", err)
 		}
