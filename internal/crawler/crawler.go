@@ -42,10 +42,15 @@ type Queue struct {
 	PendingMatches chan string
 	PendingPuuids  chan string
 	MatchData      chan api.Game
-	mu             *sync.RWMutex
+	mu             sync.RWMutex
 }
 
-var queue Queue
+var queue = Queue{
+	VisitedMatches: make(map[string]bool),
+	PendingMatches: make(chan string, 1000), // Buffered so InitialRequest doesn't block
+	PendingPuuids:  make(chan string, 1000),
+	MatchData:      make(chan api.Game, 100),
+}
 
 /*
 Gets every challenger players puuid in specified region
@@ -87,115 +92,119 @@ func InitialRequest() error {
 }
 
 func ExtractMatchIds(q *Queue) {
+	client := http.Client{}
 	for {
 		puuid := <-queue.PendingPuuids
 
-		fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids?start=0&count=5?api_key=" + apiKey
-
-		req, err := http.NewRequest("GET", fullUrl, nil)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err)
-
-		}
-
-		client := http.Client{}
-
-		var res *http.Response
-
-		var httperr error
+		fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids?start=0&count=5&api_key=" + apiKey
 		for {
+			req, err := http.NewRequest("GET", fullUrl, nil)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+
+			}
+
+			var res *http.Response
+
+			var httperr error
 			res, httperr = client.Do(req)
+			//happens upon multiple errors
 			if httperr != nil {
-				//An error here with code 429 means the rate limit has been exceeded
-				//We should retry in 2 min
-				if res.StatusCode == 429 {
-					time.Sleep(120000)
+				fmt.Printf("Network error: %s\n", httperr)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			//Happens only when rate limit hit
+			if res.StatusCode == 429 {
+				fmt.Println("Rate limit hit! Sleeping for 120 seconds...")
+				res.Body.Close()
+				time.Sleep(120 * time.Second)
+				continue
+			}
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+
+			}
+
+			interResult := string(data)
+
+			result := strings.Split(interResult, ",")
+
+			for i := range result {
+				result[i] = strings.ReplaceAll(result[i], "\"", "")
+				result[i] = strings.ReplaceAll(result[i], "[", "")
+				result[i] = strings.ReplaceAll(result[i], "]", "")
+				//fmt.Printf("debug: %s\n", result[i])
+
+				/*
+					If a match has already been added to the queue do not add it again...
+				*/
+				q.mu.Lock()
+				if !q.VisitedMatches[result[i]] {
+					q.PendingMatches <- result[i]
+					q.VisitedMatches[result[i]] = true
+				} else {
+					//huh
+					//q.VisitedMatches[result[i]] = true
 				}
-				fmt.Printf("Error: %s\n", httperr)
-
-			} else {
-				break
+				q.mu.Unlock()
 			}
-		}
-
-		data, err := io.ReadAll(res.Body)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err)
-
-		}
-
-		interResult := string(data)
-
-		result := strings.Split(interResult, ",")
-
-		for i := range result {
-			result[i] = strings.ReplaceAll(result[i], "\"", "")
-			result[i] = strings.ReplaceAll(result[i], "[", "")
-			result[i] = strings.ReplaceAll(result[i], "]", "")
-			//fmt.Printf("debug: %s\n", result[i])
-
-			/*
-				If a match has already been added to the queue do not add it again...
-			*/
-			q.mu.Lock()
-			if !q.VisitedMatches[result[i]] {
-				q.PendingMatches <- result[i]
-				q.VisitedMatches[result[i]] = true
-			} else {
-				//huh
-				//q.VisitedMatches[result[i]] = true
-			}
-			q.mu.Unlock()
+			break
 		}
 	}
 }
 
 func ExtractMatchData() {
-
+	client := http.Client{}
 	for {
 		var intermediateGame api.Game
 		matchID := <-queue.PendingMatches
 		fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/" + matchID + "?api_key=" + apiKey
-		req, err := http.NewRequest("GET", fullUrl, nil)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err)
-			//return err
-		}
-
-		client := http.Client{}
-
-		var res *http.Response
-
-		var httperr error
 		for {
-			res, httperr = client.Do(req)
-			if httperr != nil {
-				//An error here with code 429 means the rate limit has been exceeded
-				//We should retry in 2 min
-				if res.StatusCode == 429 {
-					time.Sleep(120000)
-				}
-				fmt.Printf("Error: %s\n", httperr)
-
-			} else {
-				break
+			req, err := http.NewRequest("GET", fullUrl, nil)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+				//return err
 			}
+
+			var res *http.Response
+
+			var httperr error
+			res, httperr = client.Do(req)
+			//httperr wil trigger ipon multiple 429 errors
+			if httperr != nil {
+				fmt.Printf("Error: %s\n", httperr)
+				time.Sleep(5 * time.Second)
+				continue
+			}
+
+			if res.StatusCode == 429 {
+				fmt.Println("Rate limit hit! Sleeping for 60 seconds...")
+				res.Body.Close()
+				time.Sleep(60 * time.Second)
+				continue
+			}
+			defer res.Body.Close()
+			data, err := io.ReadAll(res.Body)
+			if err != nil {
+				fmt.Printf("Error: %s\n", err)
+				//return err
+			}
+
+			if err := json.Unmarshal(data, &intermediateGame); err != nil {
+				fmt.Printf("Error: %s\n", err)
+				//return err
+			}
+
+			//queue.PendingMatches <- intermediateGame.Metadata.MatchID
+
+			queue.MatchData <- intermediateGame
+			break
 		}
 
-		data, err := io.ReadAll(res.Body)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err)
-			//return err
-		}
-
-		if err := json.Unmarshal(data, &intermediateGame); err != nil {
-			fmt.Printf("Error: %s\n", err)
-			//return err
-		}
-
-		//queue.PendingMatches <- intermediateGame.Metadata.MatchID
-
-		queue.MatchData <- intermediateGame
 	}
 
 	//queue.PendingMatches = append(queue.PendingMatches, intermediateGame.Metadata.MatchID)
@@ -295,7 +304,7 @@ func AddGameToDB(db *sql.DB) {
 			penta_kills)
 			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
 			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-			?, ?, ?, ?, ?, ?);`
+			?, ?, ?, ?, ?);`
 		for i := range match.Info.Participants {
 			_, err = db.Exec(query,
 				match.Metadata.MatchID,
@@ -326,6 +335,7 @@ func AddGameToDB(db *sql.DB) {
 				match.Info.Participants[i].NeutralMinionsKilled,
 				match.Info.Participants[i].TotalDamageDealt,
 				match.Info.Participants[i].TotalDamageDealtToChampions,
+				match.Info.Participants[i].TotalDamageTaken,
 				match.Info.Participants[i].DamageSelfMitigated,
 				match.Info.Participants[i].TotalHeal,
 				match.Info.Participants[i].VisionScore,
