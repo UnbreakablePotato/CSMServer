@@ -3,11 +3,14 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	api "github.com/UnbreakablePotato/CSMServer/internal/API"
+	db "github.com/UnbreakablePotato/CSMServer/internal/DB"
 )
 
 // lane will be from
@@ -36,16 +39,43 @@ var testChampion = api.Champion{
 	RecommendedItems:        []int{8, 9, 10, 11, 12, 13},
 }
 
-func GetChampionData(w http.ResponseWriter, req *http.Request) {
-	// IMPORTANT! the user can type anything into the request, if the request contains
-	// an unknown champion return an error instead
+func GetChampionData(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
 
-	w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(testChampion); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		champName := req.PathValue("champion")
+
+		typedPosition := req.PathValue("position")
+
+		championID, ok := api.ChampionIDs[strings.ToLower(champName)]
+		if !ok {
+			http.Error(w, "Unknown champion", http.StatusNotFound)
+			return
+		}
+
+		_, posok := api.ValidPositions[strings.ToUpper(typedPosition)]
+		if !posok {
+			http.Error(w, "Unknown position", http.StatusNotFound)
+			return
+		}
+
+		build, err := db.GetMostPopularBuild(database, championID, strings.ToUpper(typedPosition))
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				http.Error(w, "No build found for champion", http.StatusNotFound)
+				return
+			}
+
+			http.Error(w, "Failed to fetch champion build", http.StatusInternalServerError)
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(build); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
 	}
-
 }
 
 var matchup = api.Matchup{
@@ -98,7 +128,7 @@ func main() {
 
 	mux.HandleFunc("GET /tierlist/all", GetTierListAll)
 	mux.HandleFunc("GET /tierlist", GetTierList)
-	mux.HandleFunc("GET /champions/{champion}/build", GetChampionData)
+	mux.HandleFunc("GET /champions/{champion}/{position}/build", GetChampionData(db))
 	///champions/{champion}/build?opponent={opponent}
 	mux.HandleFunc("GET /champions/{champion}/build/matchup", GetMatchupData)
 	///notes/{champion}?opponent={opponent}/{id}
