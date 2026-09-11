@@ -140,6 +140,101 @@ CREATE INDEX IF NOT EXISTS idx_participants_match_team
 	return db.Exec(query)
 }
 
+type Build struct {
+	ID           int
+	ChampionID   int
+	ChampionName string
+	Position     string
+
+	Item0 int
+	Item1 int
+	Item2 int
+	Item3 int
+	Item4 int
+	Item5 int
+	Item6 int
+
+	SummonerSpell1 int
+	SummonerSpell2 int
+
+	Keystone int
+	Perk1    int
+	Perk2    int
+	Perk3    int
+	Perk4    int
+	Perk5    int
+	Perk6    int
+
+	Games int
+	Wins  int
+}
+
+func GetMostPopularBuild(db *sql.DB, championID int, position string) (*Build, error) {
+	query := `
+		SELECT
+			id,
+			champion_id,
+			champion_name,
+			position,
+			item_0,
+			item_1,
+			item_2,
+			item_3,
+			item_4,
+			item_5,
+			item_6,
+			summoner_spell_1,
+			summoner_spell_2,
+			keystone,
+			perk_1,
+			perk_2,
+			perk_3,
+			perk_4,
+			perk_5,
+			perk_6,
+			games,
+			wins
+		FROM builds
+		WHERE champion_id = ?
+		  AND position = ?
+		ORDER BY games DESC
+		LIMIT 1;
+	`
+
+	var build Build
+
+	err := db.QueryRow(query, championID, position).Scan(
+		&build.ID,
+		&build.ChampionID,
+		&build.ChampionName,
+		&build.Position,
+		&build.Item0,
+		&build.Item1,
+		&build.Item2,
+		&build.Item3,
+		&build.Item4,
+		&build.Item5,
+		&build.Item6,
+		&build.SummonerSpell1,
+		&build.SummonerSpell2,
+		&build.Keystone,
+		&build.Perk1,
+		&build.Perk2,
+		&build.Perk3,
+		&build.Perk4,
+		&build.Perk5,
+		&build.Perk6,
+		&build.Games,
+		&build.Wins,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &build, nil
+}
+
 /*
 func CreateMatchupTable(db *sql.DB) (sql.Result, error) {
 
