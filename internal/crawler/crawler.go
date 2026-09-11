@@ -210,9 +210,142 @@ func ExtractMatchData() {
 	//queue.PendingMatches = append(queue.PendingMatches, intermediateGame.Metadata.MatchID)
 }
 
+func AddBuildToDB(db *sql.DB, match api.Game) error {
+
+	for i := range match.Info.Participants {
+		participant := match.Info.Participants[i]
+
+		if len(participant.Perks.Styles) < 2 {
+			return fmt.Errorf("participant has insufficient perk styles")
+		}
+
+		primary := participant.Perks.Styles[0]
+		secondary := participant.Perks.Styles[1]
+
+		if len(primary.Selections) < 4 || len(secondary.Selections) < 2 {
+			return fmt.Errorf("participant has insufficient perk selections")
+		}
+
+		keystone := primary.Selections[0].Perk
+		perk1 := primary.Selections[1].Perk
+		perk2 := primary.Selections[2].Perk
+		perk3 := primary.Selections[3].Perk
+
+		perk4 := secondary.Selections[0].Perk
+		perk5 := secondary.Selections[1].Perk
+
+		perk6 := 0
+
+		query := `
+        INSERT INTO builds (
+            champion_id,
+            champion_name,
+            position,
+
+            item_0,
+            item_1,
+            item_2,
+            item_3,
+            item_4,
+            item_5,
+            item_6,
+
+            summoner_spell_1,
+            summoner_spell_2,
+
+            keystone,
+            perk_1,
+            perk_2,
+            perk_3,
+            perk_4,
+            perk_5,
+            perk_6,
+
+            games,
+            wins
+        )
+        VALUES (
+            ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
+            1, ?
+        )
+        ON CONFLICT (
+            champion_id,
+            position,
+            item_0,
+            item_1,
+            item_2,
+            item_3,
+            item_4,
+            item_5,
+            item_6,
+            summoner_spell_1,
+            summoner_spell_2,
+            keystone,
+            perk_1,
+            perk_2,
+            perk_3,
+            perk_4,
+            perk_5,
+            perk_6
+        )
+        DO UPDATE SET
+            games = games + 1,
+            wins = wins + excluded.wins;
+    `
+
+		wins := 0
+
+		if participant.Win {
+			wins = 1
+		}
+
+		_, err := db.Exec(
+			query,
+
+			participant.ChampionID,
+			participant.ChampionName,
+			participant.TeamPosition,
+
+			participant.Item0,
+			participant.Item1,
+			participant.Item2,
+			participant.Item3,
+			participant.Item4,
+			participant.Item5,
+			participant.Item6,
+
+			participant.Summoner1ID,
+			participant.Summoner2ID,
+
+			keystone,
+			perk1,
+			perk2,
+			perk3,
+			perk4,
+			perk5,
+			perk6,
+
+			wins,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func AddGameToDB(db *sql.DB) {
 	for {
 		match := <-queue.MatchData
+
+		builderr := AddBuildToDB(db, match)
+		if builderr != nil {
+			fmt.Printf("Error adding build: %s\n", builderr)
+		}
 
 		query := `INSERT INTO games (match_id,
 		 	data_version,
