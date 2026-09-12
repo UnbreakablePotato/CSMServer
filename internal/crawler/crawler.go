@@ -13,6 +13,7 @@ import (
 
 	api "github.com/UnbreakablePotato/CSMServer/internal/API"
 	"github.com/joho/godotenv"
+	_ "modernc.org/sqlite"
 )
 
 type Leaderboard struct {
@@ -117,9 +118,9 @@ func ExtractMatchIds(q *Queue) {
 
 			//Happens only when rate limit hit
 			if res.StatusCode == 429 {
-				fmt.Println("Rate limit hit! Sleeping for 120 seconds...")
+				fmt.Println("Rate limit hit! Sleeping for 15 seconds...")
 				res.Body.Close()
-				time.Sleep(120 * time.Second)
+				time.Sleep(15 * time.Second)
 				continue
 			}
 			defer res.Body.Close()
@@ -182,9 +183,9 @@ func ExtractMatchData() {
 			}
 
 			if res.StatusCode == 429 {
-				fmt.Println("Rate limit hit! Sleeping for 60 seconds...")
+				fmt.Println("Rate limit hit! Sleeping for 15 seconds...")
 				res.Body.Close()
-				time.Sleep(60 * time.Second)
+				time.Sleep(15 * time.Second)
 				continue
 			}
 			defer res.Body.Close()
@@ -211,6 +212,39 @@ func ExtractMatchData() {
 }
 
 func AddBuildToDB(db *sql.DB, match api.Game) error {
+	createTableQuery := `CREATE TABLE IF NOT EXISTS builds (
+		champion_id INTEGER,
+		champion_name TEXT,
+		position TEXT,
+		item_0 INTEGER,
+		item_1 INTEGER,
+		item_2 INTEGER,
+		item_3 INTEGER,
+		item_4 INTEGER,
+		item_5 INTEGER,
+		item_6 INTEGER,
+		summoner_spell_1 INTEGER,
+		summoner_spell_2 INTEGER,
+		keystone INTEGER,
+		perk_1 INTEGER,
+		perk_2 INTEGER,
+		perk_3 INTEGER,
+		perk_4 INTEGER,
+		perk_5 INTEGER,
+		perk_6 INTEGER,
+		games INTEGER,
+		wins INTEGER,
+		UNIQUE(
+			champion_id, position, 
+			item_0, item_1, item_2, item_3, item_4, item_5, item_6, 
+			summoner_spell_1, summoner_spell_2, 
+			keystone, perk_1, perk_2, perk_3, perk_4, perk_5, perk_6
+		)
+	);`
+
+	if _, err := db.Exec(createTableQuery); err != nil {
+		return fmt.Errorf("failed to create builds table: %w", err)
+	}
 
 	for i := range match.Info.Participants {
 		participant := match.Info.Participants[i]
@@ -347,6 +381,31 @@ func AddGameToDB(db *sql.DB) {
 			fmt.Printf("Error adding build: %s\n", builderr)
 		}
 
+		createTableGameQuery := `CREATE TABLE IF NOT EXISTS games (
+			match_id,
+		 	data_version,
+		  	end_of_game_result,
+		    game_creation,
+
+			game_duration,
+			game_end_timestamp,
+			game_id, game_mode,
+			game_name,
+			game_start_timestamp,
+			game_type,
+			game_version,
+			map_id,
+			platform_id,
+			queue_id,
+			tournament_code
+			);`
+
+		_, err := db.Exec(createTableGameQuery)
+		if err != nil {
+			fmt.Printf("Error creating table: %s\n", err)
+			// You might want to return or exit here if the table fails to create
+		}
+
 		query := `INSERT INTO games (match_id,
 		 	data_version,
 		  	end_of_game_result,
@@ -364,7 +423,7 @@ func AddGameToDB(db *sql.DB) {
 			queue_id,
 			tournament_code)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
-		_, err := db.Exec(query,
+		_, err = db.Exec(query,
 			match.Metadata.MatchID,
 			match.Metadata.DataVersion,
 			match.Info.EndOfGameResult,
@@ -383,6 +442,67 @@ func AddGameToDB(db *sql.DB) {
 			match.Info.TournamentCode)
 		if err != nil {
 			fmt.Printf("Error adding game: %s", err)
+		}
+
+		createTableQuery := `CREATE TABLE IF NOT EXISTS participants (
+			match_id TEXT,
+			participant_id INTEGER,
+			puuid TEXT,
+			summoner_id TEXT,
+			summoner_name TEXT,
+			summoner_level INTEGER,
+			riot_id_game_name TEXT,
+			riot_id_tagline TEXT,
+			profile_icon INTEGER,
+			champion_id INTEGER,
+			champion_name TEXT,
+			champion_level INTEGER,
+			champion_experience INTEGER,
+			team_id INTEGER,
+			team_position TEXT,
+			individual_position TEXT,
+			lane TEXT,
+			role TEXT,
+			kills INTEGER,
+			deaths INTEGER,
+			assists INTEGER,
+			win BOOLEAN,
+			gold_earned INTEGER,
+			gold_spent INTEGER,
+			total_minions_killed INTEGER,
+			neutral_minions_killed INTEGER,
+			total_damage_dealt INTEGER,
+			total_damage_dealt_to_champions INTEGER,
+			total_damage_taken INTEGER,
+			damage_self_mitigated INTEGER,
+			total_heal INTEGER,
+			vision_score INTEGER,
+			wards_placed INTEGER,
+			ward_killed INTEGER,
+			item_0 INTEGER,
+			item_1 INTEGER,
+			item_2 INTEGER,
+			item_3 INTEGER,
+			item_4 INTEGER,
+			item_5 INTEGER,
+			item_6 INTEGER,
+			summoner_spell_1_id INTEGER,
+			summoner_spell_2_id INTEGER,
+			first_blood_kill BOOLEAN,
+			first_blood_assist BOOLEAN,
+			first_tower_kill BOOLEAN,
+			first_tower_assist BOOLEAN,
+			double_kills INTEGER,
+			triple_kills INTEGER,
+			quadra_kills INTEGER,
+			penta_kills INTEGER,
+			PRIMARY KEY (match_id, puuid)
+			);`
+
+		_, err = db.Exec(createTableQuery)
+		if err != nil {
+			fmt.Printf("Error creating table: %s\n", err)
+			// You might want to return or exit here if the table fails to create
 		}
 
 		query = `INSERT INTO participants (
@@ -437,7 +557,7 @@ func AddGameToDB(db *sql.DB) {
 			penta_kills)
 			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
 			?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-			?, ?, ?, ?, ?);`
+			?, ?, ?, ?, ?, ?);`
 		for i := range match.Info.Participants {
 			_, err = db.Exec(query,
 				match.Metadata.MatchID,
@@ -507,8 +627,11 @@ func AddGameToDB(db *sql.DB) {
 	if rate limit hit wait unti
 */
 
-func Crawl(url string, db *sql.DB) {
-
+func Crawl(db *sql.DB) {
+	err := InitialRequest()
+	if err != nil {
+		fmt.Printf("InitialRequest Error: %s\n", err)
+	}
 	go ExtractMatchIds(&queue)
 	go ExtractMatchData()
 	go AddGameToDB(db)

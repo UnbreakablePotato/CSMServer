@@ -1,6 +1,10 @@
 package db
 
-import "database/sql"
+import (
+	"database/sql"
+
+	_ "modernc.org/sqlite"
+)
 
 func CreateChampionTable(db *sql.DB) (sql.Result, error) {
 

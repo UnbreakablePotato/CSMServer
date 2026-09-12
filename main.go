@@ -11,6 +11,8 @@ import (
 
 	api "github.com/UnbreakablePotato/CSMServer/internal/API"
 	db "github.com/UnbreakablePotato/CSMServer/internal/DB"
+	"github.com/UnbreakablePotato/CSMServer/internal/crawler"
+	_ "modernc.org/sqlite"
 )
 
 // lane will be from
@@ -120,9 +122,17 @@ func main() {
 		fmt.Printf("DB could not open: %s\n", derr)
 	}
 
+	defer db.Close()
+
 	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
 		fmt.Printf("Error: %s", err)
 	}
+
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	crawler.Crawl(db)
 
 	mux := http.NewServeMux()
 

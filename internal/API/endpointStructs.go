@@ -97,7 +97,7 @@ type Game struct {
 			CausedGameEndFromIGNBSurrender bool `json:"causedGameEndFromIGNBSurrender"`
 			Challenges                     struct {
 				One2AssistStreakCount                    int     `json:"12AssistStreakCount"`
-				HealFromMapSources                       int     `json:"HealFromMapSources"`
+				HealFromMapSources                       float32 `json:"HealFromMapSources"`
 				InfernalScalePickup                      int     `json:"InfernalScalePickup"`
 				SWARMDefeatAatrox                        int     `json:"SWARM_DefeatAatrox"`
 				SWARMDefeatBriar                         int     `json:"SWARM_DefeatBriar"`
@@ -114,7 +114,7 @@ type Game struct {
 				AlliedJungleMonsterKills                 int     `json:"alliedJungleMonsterKills"`
 				BaronTakedowns                           int     `json:"baronTakedowns"`
 				BlastConeOppositeOpponentCount           int     `json:"blastConeOppositeOpponentCount"`
-				BountyGold                               int     `json:"bountyGold"`
+				BountyGold                               float32 `json:"bountyGold"`
 				BuffsStolen                              int     `json:"buffsStolen"`
 				CompleteSupportQuestInTime               int     `json:"completeSupportQuestInTime"`
 				ControlWardsPlaced                       int     `json:"controlWardsPlaced"`
@@ -127,7 +127,7 @@ type Game struct {
 				DragonTakedowns                          int     `json:"dragonTakedowns"`
 				EarliestBaron                            float64 `json:"earliestBaron"`
 				EarlyLaningPhaseGoldExpAdvantage         int     `json:"earlyLaningPhaseGoldExpAdvantage"`
-				EffectiveHealAndShielding                int     `json:"effectiveHealAndShielding"`
+				EffectiveHealAndShielding                float32 `json:"effectiveHealAndShielding"`
 				ElderDragonKillsWithOpposingSoul         int     `json:"elderDragonKillsWithOpposingSoul"`
 				ElderDragonMultikills                    int     `json:"elderDragonMultikills"`
 				EnemyChampionImmobilizations             int     `json:"enemyChampionImmobilizations"`
@@ -148,7 +148,7 @@ type Game struct {
 				ImmobilizeAndKillWithAlly                int     `json:"immobilizeAndKillWithAlly"`
 				InitialBuffCount                         int     `json:"initialBuffCount"`
 				InitialCrabCount                         int     `json:"initialCrabCount"`
-				JungleCsBefore10Minutes                  int     `json:"jungleCsBefore10Minutes"`
+				JungleCsBefore10Minutes                  float32 `json:"jungleCsBefore10Minutes"`
 				JunglerTakedownsNearDamagedEpicMonster   int     `json:"junglerTakedownsNearDamagedEpicMonster"`
 				KTurretsDestroyedBeforePlatesFall        int     `json:"kTurretsDestroyedBeforePlatesFall"`
 				Kda                                      float64 `json:"kda"`
@@ -168,11 +168,11 @@ type Game struct {
 				LegendaryCount                           int     `json:"legendaryCount"`
 				LegendaryItemUsed                        []int   `json:"legendaryItemUsed"`
 				LostAnInhibitor                          int     `json:"lostAnInhibitor"`
-				MaxCsAdvantageOnLaneOpponent             int     `json:"maxCsAdvantageOnLaneOpponent"`
+				MaxCsAdvantageOnLaneOpponent             float32 `json:"maxCsAdvantageOnLaneOpponent"`
 				MaxKillDeficit                           int     `json:"maxKillDeficit"`
 				MaxLevelLeadLaneOpponent                 int     `json:"maxLevelLeadLaneOpponent"`
 				MejaisFullStackInTime                    int     `json:"mejaisFullStackInTime"`
-				MoreEnemyJungleThanOpponent              int     `json:"moreEnemyJungleThanOpponent"`
+				MoreEnemyJungleThanOpponent              float32 `json:"moreEnemyJungleThanOpponent"`
 				MultiKillOneSpell                        int     `json:"multiKillOneSpell"`
 				MultiTurretRiftHeraldCount               int     `json:"multiTurretRiftHeraldCount"`
 				Multikills                               int     `json:"multikills"`
