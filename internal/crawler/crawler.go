@@ -41,6 +41,7 @@ var challengers Leaderboard
 
 type Queue struct {
 	VisitedMatches map[string]bool
+	VisitedPuuids  map[string]bool
 	PendingMatches chan string
 	PendingPuuids  chan string
 	MatchData      chan api.Game
@@ -49,9 +50,10 @@ type Queue struct {
 
 var queue = Queue{
 	VisitedMatches: make(map[string]bool),
-	PendingMatches: make(chan string, 1000), // Buffered so InitialRequest doesn't block
-	PendingPuuids:  make(chan string, 1000),
-	MatchData:      make(chan api.Game, 100),
+	VisitedPuuids:  make(map[string]bool),
+	PendingMatches: make(chan string, 2000), // Buffered so InitialRequest doesn't block
+	PendingPuuids:  make(chan string, 2000),
+	MatchData:      make(chan api.Game, 2000),
 }
 
 /*
@@ -98,7 +100,7 @@ func ExtractMatchIds(q *Queue) {
 	for {
 		puuid := <-queue.PendingPuuids
 
-		fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids?start=0&count=5&api_key=" + apiKey
+		fullUrl := "https://europe.api.riotgames.com/lol/match/v5/matches/by-puuid/" + puuid + "/ids?start=0&count=10&api_key=" + apiKey
 		for {
 			req, err := http.NewRequest("GET", fullUrl, nil)
 			if err != nil {
@@ -147,14 +149,15 @@ func ExtractMatchIds(q *Queue) {
 					If a match has already been added to the queue do not add it again...
 				*/
 				q.mu.Lock()
-				if !q.VisitedMatches[result[i]] {
-					q.PendingMatches <- result[i]
+				isNew := !q.VisitedMatches[result[i]]
+				if isNew {
 					q.VisitedMatches[result[i]] = true
-				} else {
-					//huh
-					//q.VisitedMatches[result[i]] = true
 				}
 				q.mu.Unlock()
+
+				if isNew {
+					q.PendingMatches <- result[i]
+				}
 			}
 			break
 		}
@@ -203,6 +206,24 @@ func ExtractMatchData() {
 			if err := json.Unmarshal(data, &intermediateGame); err != nil {
 				fmt.Printf("Error: %s\n", err)
 				//return err
+			}
+
+			for _, p := range intermediateGame.Info.Participants {
+				queue.mu.Lock()
+				isNewPuuid := !queue.VisitedPuuids[p.Puuid]
+				if isNewPuuid {
+					queue.VisitedPuuids[p.Puuid] = true
+				}
+				queue.mu.Unlock()
+
+				if isNewPuuid {
+					// Non-blocking send or standard send:
+					select {
+					case queue.PendingPuuids <- p.Puuid:
+					default:
+						// Buffer full, skip or handle accordingly
+					}
+				}
 			}
 
 			//queue.PendingMatches <- intermediateGame.Metadata.MatchID
@@ -622,7 +643,6 @@ func AddGameToDB(db *sql.DB) {
 			}
 		}
 	}
-
 }
 
 /*
