@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -118,9 +119,11 @@ func ExtractMatchIds(q *Queue) {
 
 			//Happens only when rate limit hit
 			if res.StatusCode == 429 {
-				fmt.Println("Rate limit hit! Sleeping for 15 seconds...")
+				retry := res.Header.Get("Retry-After")
+				retrySeconds, _ := strconv.Atoi(retry)
+				fmt.Printf("Rate limit hit! Sleeping for %s seconds...\n", retry)
 				res.Body.Close()
-				time.Sleep(15 * time.Second)
+				time.Sleep(time.Duration(retrySeconds)*time.Second + time.Second)
 				continue
 			}
 			defer res.Body.Close()
@@ -183,9 +186,11 @@ func ExtractMatchData() {
 			}
 
 			if res.StatusCode == 429 {
-				fmt.Println("Rate limit hit! Sleeping for 15 seconds...")
+				retry := res.Header.Get("Retry-After")
+				retrySeconds, _ := strconv.Atoi(retry)
+				fmt.Printf("Rate limit hit! Sleeping for %s seconds...\n", retry)
 				res.Body.Close()
-				time.Sleep(15 * time.Second)
+				time.Sleep(time.Duration(retrySeconds)*time.Second + time.Second)
 				continue
 			}
 			defer res.Body.Close()
@@ -505,7 +510,7 @@ func AddGameToDB(db *sql.DB) {
 			// You might want to return or exit here if the table fails to create
 		}
 
-		query = `INSERT INTO participants (
+		query = `INSERT OR IGNORE INTO participants (
 			match_id,
 	 		participant_id,
 	  		puuid, summoner_id,
@@ -612,7 +617,7 @@ func AddGameToDB(db *sql.DB) {
 				match.Info.Participants[i].QuadraKills,
 				match.Info.Participants[i].PentaKills)
 			if err != nil {
-				fmt.Printf("Error adding participants: %s", err)
+				fmt.Printf("Error adding participants into participant table: %s", err)
 			}
 		}
 	}
