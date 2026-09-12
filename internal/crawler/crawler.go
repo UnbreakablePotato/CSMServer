@@ -402,7 +402,8 @@ func AddGameToDB(db *sql.DB) {
 			map_id,
 			platform_id,
 			queue_id,
-			tournament_code
+			tournament_code,
+			UNIQUE(match_id)
 			);`
 
 		_, err := db.Exec(createTableGameQuery)
@@ -411,7 +412,7 @@ func AddGameToDB(db *sql.DB) {
 			// You might want to return or exit here if the table fails to create
 		}
 
-		query := `INSERT INTO games (match_id,
+		query := `INSERT OR IGNORE INTO games (match_id,
 		 	data_version,
 		  	end_of_game_result,
 		    game_creation,

@@ -77,24 +77,24 @@ type Game struct {
 			PlayerBehavior struct {
 				PlayerBehaviorIsHeroInCombat int `json:"PlayerBehavior_IsHeroInCombat"`
 			} `json:"PlayerBehavior"`
-			PlayerScore0                   int  `json:"PlayerScore0"`
-			PlayerScore1                   int  `json:"PlayerScore1"`
-			PlayerScore10                  int  `json:"PlayerScore10"`
-			PlayerScore11                  int  `json:"PlayerScore11"`
-			PlayerScore2                   int  `json:"PlayerScore2"`
-			PlayerScore3                   int  `json:"PlayerScore3"`
-			PlayerScore4                   int  `json:"PlayerScore4"`
-			PlayerScore5                   int  `json:"PlayerScore5"`
-			PlayerScore6                   int  `json:"PlayerScore6"`
-			PlayerScore7                   int  `json:"PlayerScore7"`
-			PlayerScore8                   int  `json:"PlayerScore8"`
-			PlayerScore9                   int  `json:"PlayerScore9"`
-			AllInPings                     int  `json:"allInPings"`
-			AssistMePings                  int  `json:"assistMePings"`
-			Assists                        int  `json:"assists"`
-			BaronKills                     int  `json:"baronKills"`
-			BasicPings                     int  `json:"basicPings"`
-			CausedGameEndFromIGNBSurrender bool `json:"causedGameEndFromIGNBSurrender"`
+			PlayerScore0                   float32 `json:"PlayerScore0"`
+			PlayerScore1                   float32 `json:"PlayerScore1"`
+			PlayerScore10                  float32 `json:"PlayerScore10"`
+			PlayerScore11                  float32 `json:"PlayerScore11"`
+			PlayerScore2                   float32 `json:"PlayerScore2"`
+			PlayerScore3                   float32 `json:"PlayerScore3"`
+			PlayerScore4                   float32 `json:"PlayerScore4"`
+			PlayerScore5                   float32 `json:"PlayerScore5"`
+			PlayerScore6                   float32 `json:"PlayerScore6"`
+			PlayerScore7                   float32 `json:"PlayerScore7"`
+			PlayerScore8                   float32 `json:"PlayerScore8"`
+			PlayerScore9                   float32 `json:"PlayerScore9"`
+			AllInPings                     int     `json:"allInPings"`
+			AssistMePings                  int     `json:"assistMePings"`
+			Assists                        int     `json:"assists"`
+			BaronKills                     int     `json:"baronKills"`
+			BasicPings                     int     `json:"basicPings"`
+			CausedGameEndFromIGNBSurrender bool    `json:"causedGameEndFromIGNBSurrender"`
 			Challenges                     struct {
 				One2AssistStreakCount                    int     `json:"12AssistStreakCount"`
 				HealFromMapSources                       float32 `json:"HealFromMapSources"`
@@ -280,18 +280,18 @@ type Game struct {
 			MagicDamageDealtToChampions int    `json:"magicDamageDealtToChampions"`
 			MagicDamageTaken            int    `json:"magicDamageTaken"`
 			Missions                    struct {
-				PlayerScore0  int `json:"playerScore0"`
-				PlayerScore1  int `json:"playerScore1"`
-				PlayerScore2  int `json:"playerScore2"`
-				PlayerScore3  int `json:"playerScore3"`
-				PlayerScore4  int `json:"playerScore4"`
-				PlayerScore5  int `json:"playerScore5"`
-				PlayerScore6  int `json:"playerScore6"`
-				PlayerScore7  int `json:"playerScore7"`
-				PlayerScore8  int `json:"playerScore8"`
-				PlayerScore9  int `json:"playerScore9"`
-				PlayerScore10 int `json:"playerScore10"`
-				PlayerScore11 int `json:"playerScore11"`
+				PlayerScore0  float32 `json:"playerScore0"`
+				PlayerScore1  float32 `json:"playerScore1"`
+				PlayerScore2  float32 `json:"playerScore2"`
+				PlayerScore3  float32 `json:"playerScore3"`
+				PlayerScore4  float32 `json:"playerScore4"`
+				PlayerScore5  float32 `json:"playerScore5"`
+				PlayerScore6  float32 `json:"playerScore6"`
+				PlayerScore7  float32 `json:"playerScore7"`
+				PlayerScore8  float32 `json:"playerScore8"`
+				PlayerScore9  float32 `json:"playerScore9"`
+				PlayerScore10 float32 `json:"playerScore10"`
+				PlayerScore11 float32 `json:"playerScore11"`
 			} `json:"missions"`
 			NeedVisionPings         int `json:"needVisionPings"`
 			NeutralMinionsKilled    int `json:"neutralMinionsKilled"`
