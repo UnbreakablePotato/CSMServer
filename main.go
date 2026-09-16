@@ -65,6 +65,7 @@ func GetChampionData(database *sql.DB) http.HandlerFunc {
 		build, err := db.GetMostPopularBuild(database, championID, strings.ToUpper(typedPosition))
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
+				fmt.Println("Databse error:", err)
 				http.Error(w, "No build found for champion", http.StatusNotFound)
 				return
 			}
@@ -74,6 +75,7 @@ func GetChampionData(database *sql.DB) http.HandlerFunc {
 		}
 
 		if err := json.NewEncoder(w).Encode(build); err != nil {
+			fmt.Println("Databse error:", err)
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 			return
 		}
@@ -115,6 +117,37 @@ func GetMatchupNotes(w http.ResponseWriter, req *http.Request) {
 
 }
 
+func AutoImport(database *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		champName := req.PathValue("champion")
+
+		typedPos := req.PathValue("position")
+
+		championID, ok := api.ChampionIDs[strings.ToLower(champName)]
+		if !ok {
+			http.Error(w, "Unknown champion", http.StatusNotFound)
+			return
+		}
+
+		_, posok := api.ValidPositions[strings.ToUpper(typedPos)]
+		if !posok {
+			http.Error(w, "Unknown position", http.StatusNotFound)
+			return
+		}
+
+		runepage, err := db.GetMostPopularRunes(database, championID, typedPos)
+		if err != nil {
+
+		}
+
+		if err := json.NewEncoder(w).Encode(runepage); err != nil {
+			fmt.Println("Databse error:", err)
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
 func main() {
 
 	db, derr := sql.Open("sqlite", "./my.db")
@@ -145,6 +178,7 @@ func main() {
 	mux.HandleFunc("POST /notes/{champion}", PostMatchupNotes)
 	mux.HandleFunc("PUT /notes/{champion}", EditMatchupNotes)
 	mux.HandleFunc("GET /notes/{champion}", GetMatchupNotes)
+	mux.HandleFunc("GET /import/{champion}/{position}", AutoImport(db))
 
 	err := http.ListenAndServe(":8080", mux)
 
